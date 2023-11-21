@@ -1,0 +1,89 @@
+- hosts: web_servers
+  become: true
+  pre_tasks:
+
+  - name: Install the Updates for Ubuntu
+    apt:
+      upgrade: dist
+      update_cache: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: dpkg for Ubuntu
+    shell:
+      dpkg --configure -a
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install Python pip for Ubuntu
+    apt:
+      name: python3-pip
+      state: present
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install Docker for Ubuntu
+    apt:
+      name: docker
+      state: latest
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Install SDK for Ubuntu
+    pip:
+      name: docker-py
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Create Docker Group
+    group:
+      name: docker
+      state: present
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Adding user to Docker Group
+    user:
+      name: santos
+      groups: docker
+      append: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Enable/Restart Docker
+    systemd:
+      name: docker.service
+      state: started
+      enabled: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Creating Directory for Dockerfile
+    file:
+      path:  ./root/demo-dockerfile
+      state: directory
+      owner: root
+      group: root
+      mode:  '0755'
+
+  - name: Importing of Dockerfile
+    copy:
+      src:  ./Dockerfile
+      dest: ./root/demo-dockerfile/Dockerfile
+      owner: root
+      group: root
+      mode:  '0755'
+
+  - name: Dockerfile Configuration
+    docker_image:
+      name: act11
+      build:
+        path: ./root/demo-dockerfile
+        args:
+          listen_port: 8080
+      state: present
+
+  - name: Pull Docker Image
+    docker_image:
+      name: act11
+      source: pull
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Accessing the Container
+    shell: docker run -it -d -p 8080:80 act11
+    when: ansible_distribution == "Ubuntu"
+
+
+
